@@ -1,14 +1,14 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+#![no_std]
+#![allow(unexpected_cfgs)]
+use pinocchio::{no_allocator, nostd_panic_handler, program_entrypoint};
+use processor::process_instruction;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod constants;
+pub mod instructions;
+pub mod processor;
+pub mod state;
+pinocchio_pubkey::declare_id!("EAUvJAw61MTaJbyV4tqFB4dEZuYHdYrtpGQ35hDsQ6Dw");
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+program_entrypoint!(process_instruction);
+no_allocator!();
+nostd_panic_handler!();
