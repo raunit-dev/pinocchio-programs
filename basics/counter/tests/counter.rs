@@ -19,7 +19,7 @@ mod tests {
 
     #[test]
     fn test_create_counter_data() {
-        let mollusk = Mollusk::new(&PROGRAM_ID, "../target/deploy/counter");
+        let mollusk = Mollusk::new(&PROGRAM_ID, "./target/deploy/counter");
 
         let (system_program, system_account) =
             mollusk_svm::program::keyed_account_for_system_program();
@@ -28,7 +28,7 @@ mod tests {
         let owner_account = AccountSharedData::new(1 * LAMPORTS_PER_SOL, 0, &system_program);
 
         let (counter_pubkey, bump) =
-            solana_sdk::pubkey::Pubkey::find_program_address(&[COUNTER_SEED], &system_program);
+            solana_sdk::pubkey::Pubkey::find_program_address(&[COUNTER_SEED], &PROGRAM_ID);
         let counter_account = AccountSharedData::new(0, 0, &system_program);
 
         let counter_init_state = Counter {
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn test_increase_counter_data() {
-        let mollusk = Mollusk::new(&PROGRAM_ID, "../target/deploy/counter");
+        let mollusk = Mollusk::new(&PROGRAM_ID, "./target/deploy/counter");
 
         let (system_program, system_account) =
             mollusk_svm::program::keyed_account_for_system_program();
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_decrease_counter_data() {
-        let mollusk = Mollusk::new(&PROGRAM_ID, "../../target/deploy/counter");
+        let mollusk = Mollusk::new(&PROGRAM_ID, "./target/deploy/counter");
 
         let (system_program, system_account) =
             mollusk_svm::program::keyed_account_for_system_program();

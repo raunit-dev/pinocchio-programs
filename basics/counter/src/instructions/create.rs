@@ -23,14 +23,15 @@ impl<'info> TryFrom<&'info [AccountInfo]> for CreateCounterIxsAccounts<'info> {
             return Err(ProgramError::NotEnoughAccountKeys);
         };
 
+        // check payer is signer
         if !maker.is_signer() {
             return Err(ProgramError::MissingRequiredSignature);
         }
-
+        // check counter is writable
         if !counter.is_writable() {
             return Err(ProgramError::InvalidAccountData);
         }
-
+        // check counter is not already initialized
         if counter.data_len() != 0 {
             return Err(ProgramError::AccountAlreadyInitialized);
         }
@@ -93,11 +94,11 @@ impl<'info> Create<'info> {
         if self.accounts.counter.key() != &counter_pubkey {
             return Err(ProgramError::InvalidAccountData);
         }
-
         let bump = [self.instruction_datas.bump as u8];
         let seed = [Seed::from(COUNTER_SEED), Seed::from(&bump)];
         let signer_seeds = Signer::from(&seed);
 
+        // Initialize the counter account
         pinocchio_system::instructions::CreateAccount {
             from: self.accounts.maker,
             to: self.accounts.counter,
@@ -107,6 +108,7 @@ impl<'info> Create<'info> {
         }
         .invoke_signed(&[signer_seeds])?;
 
+        // write the initial data to the counter account
         let counter = unsafe {
             bytemuck::try_from_bytes_mut::<Counter>(
                 self.accounts.counter.borrow_mut_data_unchecked(),
