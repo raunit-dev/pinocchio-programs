@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
     use account_data::{
-        state::{AddressInfo, CreateAddressInfoInstructionData},
+        state::AddressInfo,
         ID,
+        instructions::CreateAddressInfoInstructionData
     };
     use mollusk_svm::{
         result::{Check, ProgramResult},
