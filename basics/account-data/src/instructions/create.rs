@@ -111,6 +111,9 @@ impl<'info> Create<'info> {
         )
         .map_err(|_| ProgramError::InvalidAccountData)?
     };
+    //No, you can’t just use set_inner without first getting a mutable reference 
+    //to the deserialized data in the account’s raw byte buffer. 
+    //The let address_info_state = ... line is getting that reference.
 
     address_info_state.set_inner(AddressInfo {
         name: self.instruction_datas.name,

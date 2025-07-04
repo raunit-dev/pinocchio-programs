@@ -6,7 +6,7 @@ use crate::instructions::{Create, Instruction};
 use pinocchio_log::log;
 
 #[inline(always)]
-pub fn process_instruction(
+pub fn process_instruction( // These function "process_instruction" is the instruction router 
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
     instruction_datas: &[u8],
@@ -17,6 +17,7 @@ pub fn process_instruction(
         return Err(ProgramError::IncorrectProgramId);
     }
 
+    //deserializes the instruction data to determine which instruction is being called (the rest part of the code not these line)
     let (discriminator, data) = instruction_datas
         .split_first()
         .ok_or(ProgramError::InvalidInstructionData)?;
