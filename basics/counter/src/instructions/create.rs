@@ -84,7 +84,8 @@ impl<'info> TryFrom<(&'info [AccountInfo], &'info [u8])> for Create<'info> {
 }
 
 impl<'info> Create<'info> {
-    pub fn handler(&mut self) -> ProgramResult {
+    pub fn handler(&mut self) -> ProgramResult { // goal -> Perform a CPI to the Solana System Program; it must ask the System Program to do it on its behalf
+
         let counter_pubkey = pubkey::create_program_address(
             &[COUNTER_SEED, &[self.instruction_datas.bump as u8]],
             &crate::ID,
@@ -99,7 +100,7 @@ impl<'info> Create<'info> {
         let signer_seeds = Signer::from(&seed);
 
         // Initialize the counter account
-        pinocchio_system::instructions::CreateAccount {
+        pinocchio_system::instructions::CreateAccount { // Invoking the System Program to create the Account
             from: self.accounts.maker,
             to: self.accounts.counter,
             space: Counter::LEN as u64,
