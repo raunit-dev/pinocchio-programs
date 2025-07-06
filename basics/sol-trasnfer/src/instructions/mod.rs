@@ -20,3 +20,13 @@ impl TryFrom<&u8> for Instruction {
         }
     }
 }
+
+
+//    * Instruction Enum and Routing: This file defines an enum Instruction that acts as a dispatcher for different types of instructions your program can handle.
+//    * #[repr(u8)]: Ensures that the enum variants are represented by a single u8 byte, which is crucial for using the first byte of instruction data as a discriminator.
+//    * impl TryFrom<&u8> for Instruction: Implements a conversion from a u8 byte to an Instruction enum variant. This is how the processor.rs determines which instruction was requested based on the
+//      incoming instruction data.
+//        * 0: Maps to TransferSolWithProgram.
+//        * 1: Maps to TransferSolWithCpi.
+//        * Any other value results in ProgramError::InvalidInstructionData.
+//    * It also declares the modules within the instructions directory: shared, transfer_sol_with_cpi, and transfer_sol_with_program.

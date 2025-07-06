@@ -16,6 +16,20 @@ mod tests {
 
     pub const PROGRAM_ID: Pubkey = Pubkey::new_from_array(ID);
 
+    //        * Integration Tests: This file contains integration tests for the Solana program, using the mollusk-svm crate to simulate the Solana runtime environment.
+    //    * Mollusk::new(): Initializes a simulated Solana Virtual Machine (SVM) instance, loading your program.
+    //    * keyed_account_for_system_program(): Helper to get the System Program's public key and account data.
+    //    * Test Setup: Both test_transfer_sol_with_program and test_transfer_sol_with_cpi follow a similar pattern:
+    //        * Define payer and recipient public keys and their initial account states (AccountSharedData).
+    //        * Create TransferSolInstructionData with the amount to transfer.
+    //        * Construct an Instruction object, including:
+    //            * The program ID (PROGRAM_ID).
+    //            * The instruction data (prefixed with 0 for direct transfer, 1 for CPI transfer).
+    //            * The AccountMeta list, specifying which accounts are involved and their properties (signer, writable, etc.).
+    //    * mollusk.process_and_validate_instruction(): This is the core of the test. It executes the instruction on the simulated SVM and allows you to define Checks to assert the expected state of accounts
+    //      after the instruction execution (e.g., final lamport balances).
+    //    * assert!(result.program_result == ProgramResult::Success): Asserts that the instruction executed successfully.
+
     #[test]
     fn test_transfer_sol_with_program() {
         let mollusk = Mollusk::new(&PROGRAM_ID, "./target/deploy/sol_trasnfer");
