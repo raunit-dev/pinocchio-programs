@@ -1,0 +1,19 @@
+cargo-features = ["edition2024"]
+[package]
+name = "sol-trasnfer"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+pinocchio = "0.8.4"
+pinocchio-log = "0.4.0"
+pinocchio-pubkey = "0.2.4"
+pinocchio-system = "0.2.3"
+bytemuck = { version = "1.23.0", features = ["derive", "min_const_generics"] }
+
+[dev-dependencies]
+mollusk-svm = "0.3.0"
+solana-sdk = "2.2.2"

@@ -1,0 +1,19 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Solana
+/deploy/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+temp/

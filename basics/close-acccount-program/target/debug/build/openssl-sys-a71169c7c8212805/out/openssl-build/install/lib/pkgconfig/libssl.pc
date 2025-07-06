@@ -1,4 +1,4 @@
-prefix=/home/raunit/solana-pinocchio/basics/close-acccount/target/debug/build/openssl-sys-a71169c7c8212805/out/openssl-build/install
+prefix=/home/raunit/solana-pinocchio/basics/close-acccount-program/target/debug/build/openssl-sys-a71169c7c8212805/out/openssl-build/install
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include 
