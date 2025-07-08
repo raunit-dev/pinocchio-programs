@@ -17,6 +17,7 @@ mod tests {
         let result: mollusk_svm::result::InstructionResult = 
             mollusk.process_and_validate_instruction(&instruction, &[], &[Check::success()]);
 
+
         assert!(result.program_result == ProgramResult::Success);
     }
 }

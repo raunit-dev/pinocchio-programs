@@ -1,19 +1,11 @@
 use core::mem::transmute;
-
+// use bytemuck::{Pod, Zeroable};
 use pinocchio::{account_info::AccountInfo, program_error::ProgramError};
 
 
-//    * Common Data Structures: This file defines data structures that are shared between different instruction handlers.
-//    * TransferSolAccounts<'info>: A struct to hold references to the payer and recipient AccountInfo objects.
-//        * impl TryFrom<&'info [AccountInfo]> for TransferSolAccounts<'info>: This implementation handles the parsing and validation of the accounts passed into the instruction. It ensures:
-//            * There are enough accounts provided.
-//            * The payer account is a signer.
-//            * The recipient account is writable.
-//            * The recipient account is owned by the System Program (pinocchio_system::ID), which is necessary for SOL transfers.
-//    * TransferSolInstructionData: A struct to hold the amount of lamports to transfer.
-//        * #[repr(C)]: Ensures a C-compatible memory layout, which is important for safely transmuting raw bytes into this struct.
-//        * impl TryFrom<&'info [u8]> for TransferSolInstructionData: Implements conversion from a byte slice to this struct, allowing the program to easily extract the transfer amount from the
-//          instruction data.
+// What is Zero-Copy?
+// Zero-copy deserialization means no new memory allocation or data copying happens when you turn raw bytes into a typed struct.
+// Instead, the program interprets the existing bytes in-place as the struct.
 
 pub struct TransferSolAccounts<'info> {
     pub payer: &'info AccountInfo,
@@ -64,5 +56,24 @@ impl<'info> TryFrom<&'info [u8]> for TransferSolInstructionData {
                     .map_err(|_| ProgramError::InvalidInstructionData)?,
             )
         })
+
+        //whenever you feel like confused see these https://chatgpt.com/share/686d3d61-81e4-8012-ac1b-3fbff1a9106a
+
+//         Using bytemuck is basically:
+
+// “Let a well-tested crate write the unsafe for you, and make your assumptions explicit via traits like Pod.”
+
+// Whereas transmute is:
+
+// “Trust me, I know this struct is safe. Fingers crossed.”
+
+        //Bytemuck is safe if your type implements Pod + Zeroable correctly (i.e., no pointers, no padding, no non-Copy types).
+        // Your unsafe transmute is functionally similar to bytemuck, but you are assuming the same safety manually — any padding, misalignment, or 
+        // incorrect size will result in UB (undefined behavior).
+        // Official docs recommend bytemuck or similar methods for large, performance-critical types where you want to avoid Serde/Borsh-style allocations.
+        // let result = bytemuck::try_from_bytes::<Self>(&data)
+        //     .map_err(|_| ProgramError::InvalidInstructionData)?;
+
+        // Ok(*result)
     }
 }
