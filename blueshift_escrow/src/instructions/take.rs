@@ -1,16 +1,18 @@
-use crate::state::Escrow;
 use pinocchio::{
-    account_info::AccountInfo,
     ProgramResult,
-    error::PinocchioError,
+    account_info::AccountInfo,
+    instruction::{Seed, Signer},
     program_error::ProgramError,
-    pubkey::{create_program_address, Pubkey},
+    pubkey::create_program_address,
 };
-use pinocchio_associated_token_account::create as create_associated_token_account;
 use pinocchio_token::{
-    self,
-    instruction::close_account,
-    state::Account as TokenAccount,
+    instructions::{CloseAccount, Transfer},
+    state::TokenAccount,
+};
+
+use crate::{
+    AccountCheck, AccountClose, AssociatedTokenAccount, AssociatedTokenAccountCheck,
+    AssociatedTokenAccountInit, Escrow, MintInterface, ProgramAccount, SignerAccount,
 };
 
 pub struct TakeAccounts<'a> {
@@ -25,20 +27,40 @@ pub struct TakeAccounts<'a> {
     pub maker_ata_b: &'a AccountInfo,
     pub system_program: &'a AccountInfo,
     pub token_program: &'a AccountInfo,
+    pub associated_token_account_program: &'a AccountInfo,
 }
 
-impl<'a> TakeAccounts<'a> {
-    pub fn new(accounts: &'a [AccountInfo]) -> Result<Self, ProgramError> {
-        let [taker, maker, escrow, mint_a, mint_b, vault, taker_ata_a, taker_ata_b, maker_ata_b, system_program, token_program, ..] =
-            accounts
+impl<'a> TryFrom<&'a [AccountInfo]> for TakeAccounts<'a> {
+    type Error = ProgramError;
+
+    fn try_from(accounts: &'a [AccountInfo]) -> Result<Self, Self::Error> {
+        let [
+            taker,
+            maker,
+            escrow,
+            mint_a,
+            mint_b,
+            vault,
+            taker_ata_a,
+            taker_ata_b,
+            maker_ata_b,
+            system_program,
+            token_program,
+            associated_token_account_program,
+        ] = accounts
         else {
             return Err(ProgramError::NotEnoughAccountKeys);
         };
 
-        if !taker.is_signer() {
-            return Err(PinocchioError::NotSigner.into());
-        }
+        // Basic Accounts Checks
+        SignerAccount::check(taker)?;
+        ProgramAccount::check(escrow)?;
+        MintInterface::check(mint_a)?;
+        MintInterface::check(mint_b)?;
+        AssociatedTokenAccount::check(taker_ata_b, taker, mint_b, token_program)?;
+        AssociatedTokenAccount::check(vault, escrow, mint_a, token_program)?;
 
+        // Return the accounts
         Ok(Self {
             taker,
             maker,
@@ -51,6 +73,7 @@ impl<'a> TakeAccounts<'a> {
             vault,
             system_program,
             token_program,
+            associated_token_account_program,
         })
     }
 }
@@ -59,79 +82,101 @@ pub struct Take<'a> {
     pub accounts: TakeAccounts<'a>,
 }
 
-impl<'a> Take<'a> {
-    pub const DISCRIMINATOR: u8 = 1;
+impl<'a> TryFrom<&'a [AccountInfo]> for Take<'a> {
+    type Error = ProgramError;
 
-    pub fn try_from(accounts: &'a [AccountInfo]) -> Result<Self, ProgramError> {
-        let accounts = TakeAccounts::new(accounts)?;
+    fn try_from(accounts: &'a [AccountInfo]) -> Result<Self, Self::Error> {
+        let accounts = TakeAccounts::try_from(accounts)?;
 
-        create_associated_token_account(
-            accounts.taker.clone(),
-            accounts.taker.clone(),
-            accounts.mint_a.clone(),
+        // Initialize necessary accounts
+        AssociatedTokenAccount::init_if_needed(
+            accounts.taker_ata_a,
+            accounts.mint_a,
+            accounts.taker,
+            accounts.taker,
+            accounts.system_program,
+            accounts.token_program,
         )?;
 
-        create_associated_token_account(
-            accounts.taker.clone(),
-            accounts.maker.clone(),
-            accounts.mint_b.clone(),
+        AssociatedTokenAccount::init_if_needed(
+            accounts.maker_ata_b,
+            accounts.mint_b,
+            accounts.taker,
+            accounts.maker,
+            accounts.system_program,
+            accounts.token_program,
         )?;
 
-        Ok(Self {
-            accounts,
-        })
+        Ok(Self { accounts })
     }
+}
+
+impl<'a> Take<'a> {
+    pub const DISCRIMINATOR: &'a u8 = &1;
 
     pub fn process(&mut self) -> ProgramResult {
         let data = self.accounts.escrow.try_borrow_data()?;
         let escrow = Escrow::load(&data)?;
 
+        // Check if the escrow is valid
         let escrow_key = create_program_address(
             &[
                 b"escrow",
-                self.accounts.maker.key.as_ref(),
+                self.accounts.maker.key(),
                 &escrow.seed.to_le_bytes(),
-                &[escrow.bump],
+                &escrow.bump,
             ],
-            &crate::id(),
+            &crate::ID,
         )?;
-        if &escrow_key != self.accounts.escrow.key {
+        if &escrow_key != self.accounts.escrow.key() {
             return Err(ProgramError::InvalidAccountOwner);
         }
 
-        let vault_data = self.accounts.vault.try_borrow_data()?;
-        let vault = TokenAccount::unpack(&vault_data)?;
+        let seed_binding = escrow.seed.to_le_bytes();
+        let bump_binding = escrow.bump;
+        let escrow_seeds = [
+            Seed::from(b"escrow"),
+            Seed::from(self.accounts.maker.key().as_ref()),
+            Seed::from(&seed_binding),
+            Seed::from(&bump_binding),
+        ];
+        let signer = Signer::from(&escrow_seeds);
 
-        pinocchio_token::instruction::transfer(
-            self.accounts.token_program.key,
-            self.accounts.vault.key,
-            self.accounts.taker_ata_a.key,
-            self.accounts.escrow.key,
-            &[],
-            vault.amount,
-        )?;
+        let amount = {
+            let vault = TokenAccount::from_account_info(self.accounts.vault)?;
 
-        close_account(
-            self.accounts.token_program.key,
-            self.accounts.vault.key,
-            self.accounts.maker.key,
-            self.accounts.escrow.key,
-            &[],
-        )?;
+            vault.amount()
+        };
 
-        pinocchio_token::instruction::transfer(
-            self.accounts.token_program.key,
-            self.accounts.taker_ata_b.key,
-            self.accounts.maker_ata_b.key,
-            self.accounts.taker.key,
-            &[],
-            escrow.receive,
-        )?;
+        // Transfer from the Vault to the Taker
+        Transfer {
+            from: self.accounts.vault,
+            to: self.accounts.taker_ata_a,
+            authority: self.accounts.escrow,
+            amount,
+        }
+        .invoke_signed(&[signer.clone()])?;
 
-        self.accounts.escrow.realloc(0, false)?;
-        self.accounts
-            .escrow
-            .assign(&pinocchio_system::ID);
+        // Close the Vault
+        CloseAccount {
+            account: self.accounts.vault,
+            destination: self.accounts.maker,
+            authority: self.accounts.escrow,
+        }
+        .invoke_signed(&[signer.clone()])?;
+
+        // Transfer from the Taker to the Maker
+        Transfer {
+            from: self.accounts.taker_ata_b,
+            to: self.accounts.maker_ata_b,
+            authority: self.accounts.taker,
+            amount: escrow.receive,
+        }
+        .invoke()?;
+
+        // Close the Escrow
+        drop(data);
+        ProgramAccount::close(self.accounts.escrow, self.accounts.maker)?;
 
         Ok(())
     }
